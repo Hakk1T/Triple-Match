@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triple Match</title>
+    <link rel="stylesheet" type="text/css"  href="static/styles.css">   
+</head>
+<body>
+    <div class="container">
+        <h2 id="game-title">Triple Match</h2>
+        <!-- Kazanma veya kaybetme durumu -->
+        <h3 id="game-status"></h3>
+
+        <!-- Oyun ızgarası ve her hücreyi ekleyeceğiz -->
+        <div id="grid-container">
+        </div>
+
+        <!-- Buton burada oyun ızgarasının altına yerleştirdim -->
+        <button type="button" class="button" onclick="oyunBaslat()">
+            <div class="button-top">Oyunu Başlat</div>
+            <div class="button-bottom"></div>
+            <div class="button-base"></div>
+        </button>
+
+        <!-- Oyuncu Durumu -->
+        <div>
+            <h3>Oyuncu Durumu</h3>
+            <p><strong>Puan :</strong> <span id="puan">0</span></p>
+            <p><strong>Çarpan :</strong> <span id="carpan">1</span></p>
+        </div>
+
+    </div>
+
+    <script>
+        async function oyunBaslat() {
+            const gameStatus = document.getElementById("game-status");
+            const button = document.querySelector(".button");
+            gameStatus.textContent = "";
+    
+            const response = await fetch("/oyun-baslat");
+            const data = await response.json();
+    
+            // Bekleme süresi kontrolü
+            if (data.sonuc && data.sonuc.startsWith("Lütfen")) {
+                const remainingTime = parseInt(data.sonuc.match(/\d+/)[0]); // Kalan süreyi al
+                gameStatus.textContent = "Bekleme süresi başladı. Lütfen bekleyin...";
+                button.disabled = true; // Butonu devre dışı bırak
+                button.style.opacity = "0.5"; // Görsel olarak butonun pasif olduğunu belli eder.
+                startCountdown(remainingTime, button, gameStatus); // Geri sayımı başlatır.
+                return;
+            }
+    
+            // Oyuna başlama işlemleri
+            const gridContainer = document.getElementById("grid-container");
+            gridContainer.innerHTML = "";
+    
+            // Geçici grid oluştur
+            const rowCount = data.izgara.length;
+            const colCount = data.izgara[0].length;
+    
+            for (let i = 0; i < rowCount; i++) {
+                let rowDiv = document.createElement("div");
+                rowDiv.classList.add("grid-row");
+                for (let j = 0; j < colCount; j++) {
+                    let cellDiv = document.createElement("div");
+                    cellDiv.classList.add("grid-cell");
+                    cellDiv.textContent = ""; // Başlangıçta boş
+                    rowDiv.appendChild(cellDiv);
+                }
+                gridContainer.appendChild(rowDiv);
+            }
+            
+            const cells = document.querySelectorAll(".grid-cell");
+    
+            // Hücrelere animasyon uygulama
+            cells.forEach((cell, index) => {
+                let rowIndex = Math.floor(index / colCount);
+                let colIndex = index % colCount;
+                let counter = 0;
+    
+                const interval = setInterval(() => {
+                    cell.textContent = Math.floor(Math.random() * 3) + 1;
+    
+                    if (colIndex === 1) {
+                        cell.style.backgroundColor = "#330a00"; 
+                        cell.style.color = "#e6e6e6";
+                    } else {
+                        cell.style.backgroundColor = "#330a00";
+                        cell.style.color = "#e6e6e6";
+                    }
+    
+                    counter++;
+                    if (counter > 10) {
+                        clearInterval(interval);
+                        cell.textContent = data.izgara[rowIndex][colIndex];
+                    }
+                }, 100 + index * 50);
+            });
+    
+            setTimeout(() => {
+                gameStatus.textContent = data.sonuc;
+    
+                document.getElementById("puan").textContent = data.puan;
+                document.getElementById("carpan").textContent = data.carpan;
+    
+                const cellsAfterAnim = document.querySelectorAll(".grid-cell");
+                cellsAfterAnim.forEach((cell, index) => {
+                    let rowIndex = Math.floor(index / colCount);
+                    let colIndex = index % colCount;
+    
+                    if (colIndex === 1) {
+                        if (data.kazandiMi) {
+                            cell.style.backgroundColor = "yellow";
+                            cell.style.color = "black";
+                        } else {
+                            cell.style.backgroundColor = "red";
+                            cell.style.color = "white";
+                        }
+                    }
+                });
+    
+            }, 5100);
+        }
+    
+        function startCountdown(duration, button, gameStatus) {
+            let remaining = duration;
+            const interval = setInterval(() => {
+                remaining--;
+                gameStatus.textContent = `Bekleme süresi: ${remaining} saniye`;
+    
+                if (remaining <= 0) {
+                    clearInterval(interval);
+                    gameStatus.textContent = "Tekrar oynamaya hazır!";
+                    button.disabled = false;
+                    button.style.opacity = "1"; // Butonu tekrar aktif hale getir
+                }
+            }, 1000);
+        }
+    </script>    
+    
+</body>
+</html>
